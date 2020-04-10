@@ -48,6 +48,11 @@ typedef enum {
     eRHumidityHoldCmd   = 0xE5,
     eTempNoHoldCmd      = 0xF3,
     eRHumidityNoHoldCmd = 0xF5,
+	eTempFromLastRH		= 0xE0,
+	eReset				= 0xFE,
+	eWriteUserReg		= 0xE6,
+	eReadUserReg		= 0xE7
+	
 } HUM_MEASUREMENT_CMD_T;
 
 
@@ -65,7 +70,7 @@ float SHT2xClass::GetHumidity(void)
 {
     float value = readSensor(eRHumidityHoldCmd);
     if (value == 0) {
-        return 0;                       // Some unrealistic value
+        return 255;                       // Some unrealistic value
     }
     return -6.0 + 125.0 / 65536.0 * value;
 }
@@ -94,7 +99,7 @@ float SHT2xClass::GetTemperature(void)
 float SHT2xClass::GetDewPoint(void)
 {
   float humidity = GetHumidity();
-  float temperature = GetTemperature();
+  float temperature = -46.85 + 175.72 / 65536.0 * readSensor(eTempFromLastRH);
 
   // Calculate the intermediate value 'gamma'
   float gamma = log(humidity / 100) + WATER_VAPOR * temperature / (BAROMETRIC_PRESSURE + temperature);
@@ -114,15 +119,21 @@ uint16_t SHT2xClass::readSensor(uint8_t command)
 
     Wire.beginTransmission(eSHT2xAddress);
     Wire.write(command);
+    delay(10);
     Wire.endTransmission();
-    delay(100);
 
     Wire.requestFrom(eSHT2xAddress, 3);
-    uint32_t timeout = millis() + 300;       // Don't hang here for more than 300ms
+    uint32_t timeout = millis() + 100;       // Don't hang here for more than 100ms
+	uint8_t retry=0;
     while (Wire.available() < 3) {
         if ((millis() - timeout) > 0) {
-            return 0;
+            timeout = millis() + 100;
+			Wire.requestFrom(eSHT2xAddress, 3);
+			retry++;
         }
+		if (retry == 3){					// Try 3 times before returning 0
+			return 0;
+		}
     }
 
     //Store the result

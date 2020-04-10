@@ -37,12 +37,13 @@
 class SHT2xClass
 {
   private:
-    uint16_t readSensor(uint8_t command);
+    //uint16_t readSensor(uint8_t command);
 
   public:
     float GetHumidity(void);
     float GetTemperature(void);
     float GetDewPoint(void);
+	uint16_t readSensor(uint8_t command);
 };
 
 extern SHT2xClass SHT2x;
